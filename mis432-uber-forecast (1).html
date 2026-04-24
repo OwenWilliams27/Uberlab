@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uber Demand Forecasting — MIS 432 Lab | Owen</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
+  :root {
+    --black: #000000;
+    --cyan: #1fbad6;
+    --cyan-dim: rgba(31, 186, 214, 0.15);
+    --cyan-border: rgba(31, 186, 214, 0.35);
+    --white: #ffffff;
+    --gray-1: #f5f5f5;
+    --gray-2: #cccccc;
+    --gray-3: #888888;
+    --gray-4: #333333;
+    --gray-5: #1a1a1a;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--cyan-border);
+    padding: 0 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+  }
+  .nav-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--gray-2);
+    text-transform: uppercase;
+  }
+  .nav-label span { color: var(--cyan); }
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--gray-3);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--cyan); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    min-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 5rem 2.5rem 5rem;
+    border-bottom: 1px solid var(--gray-4);
+    overflow: hidden;
+  }
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(31,186,214,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,186,214,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .hero-glow {
+    position: absolute;
+    top: -200px;
+    right: -200px;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(31,186,214,0.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.2s forwards;
+  }
+  .hero-title {
+    font-family: var(--font-mono);
+    font-size: clamp(2.2rem, 5vw, 4.2rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    max-width: 820px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.35s forwards;
+  }
+  .hero-title em {
+    font-style: normal;
+    color: var(--cyan);
+  }
+  .hero-sub {
+    margin-top: 1.8rem;
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: var(--gray-2);
+    max-width: 580px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.5s forwards;
+  }
+  .hero-meta {
+    margin-top: 3rem;
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.65s forwards;
+  }
+  .hero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .hero-stat .value {
+    font-family: var(--font-mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--cyan);
+    line-height: 1;
+  }
+  .hero-stat .label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--gray-3);
+    text-transform: uppercase;
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 5.5rem 2.5rem;
+    border-bottom: 1px solid var(--gray-4);
+  }
+  .section:last-child { border-bottom: none; }
+  .section-number {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 2rem;
+    color: var(--white);
+  }
+  .section-body {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--gray-1);
+  }
+  .section-body p + p { margin-top: 1.2rem; }
+  .section-body strong { color: var(--white); font-weight: 600; }
+
+  /* ── PLACEHOLDER BLOCKS ── */
+  .placeholder {
+    margin: 2rem 0;
+    border: 1.5px dashed var(--cyan-border);
+    border-radius: 4px;
+    padding: 2rem 1.8rem;
+    background: var(--cyan-dim);
+    position: relative;
+  }
+  .placeholder::before {
+    content: '⚠ PASTE YOUR CONTENT HERE';
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--cyan);
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;
+  }
+  .placeholder-text {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--gray-2);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  /* ── MEMO BLOCK ── */
+  .memo-block {
+    margin: 2rem 0;
+    background: var(--gray-5);
+    border: 1px solid var(--gray-4);
+    border-left: 3px solid var(--cyan);
+    border-radius: 4px;
+    padding: 2rem 1.8rem;
+  }
+  .memo-block pre {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.65;
+    color: var(--gray-1);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── CHART IMAGE AREA ── */
+  .chart-area {
+    margin: 2rem 0;
+    border: 1px solid var(--gray-4);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #0d0d0d;
+  }
+  .chart-area img {
+    width: 100%;
+    display: block;
+  }
+  .chart-caption {
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--gray-3);
+    line-height: 1.6;
+    padding-bottom: 0.5rem;
+  }
+  .chart-caption em { color: var(--cyan); font-style: normal; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    margin: 2.5rem 0;
+    background: var(--gray-5);
+    border-left: 3px solid var(--cyan);
+    padding: 1.4rem 1.8rem;
+    border-radius: 0 4px 4px 0;
+  }
+  .callout p {
+    font-size: 0.92rem;
+    color: var(--gray-2);
+    line-height: 1.7;
+  }
+  .callout strong { color: var(--white); }
+
+  /* ── RISK TAG ── */
+  .risk-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(31,186,214,0.12);
+    color: var(--cyan);
+    border: 1px solid var(--cyan-border);
+    border-radius: 2px;
+    padding: 0.2rem 0.55rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--gray-4);
+    padding: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .footer-left {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--gray-3);
+    letter-spacing: 0.06em;
+  }
+  .footer-left span { color: var(--cyan); }
+  .footer-right {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--gray-3);
+  }
+
+  /* ── DIVIDER LINE ── */
+  .rule {
+    border: none;
+    border-top: 1px solid var(--gray-4);
+    margin: 2rem 0;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    nav { padding: 0 1.2rem; }
+    .nav-links { display: none; }
+    .hero { padding: 3rem 1.4rem 3.5rem; }
+    .hero-meta { gap: 1.5rem; }
+    .section { padding: 3.5rem 1.4rem; }
+    footer { padding: 2rem 1.4rem; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ NAV -->
+<nav>
+  <span class="nav-label">MIS 432 · AI in Business · <span>Western Washington University</span></span>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#model">Model</a></li>
+    <li><a href="#prediction">Prediction</a></li>
+    <li><a href="#stress">Stress Test</a></li>
+    <li><a href="#algorithm">Algorithm</a></li>
+    <li><a href="#shift">Model Failure</a></li>
+    <li><a href="#reflection">Analysis</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <p class="hero-eyebrow">Lab Project · Spring 2025 · MIS 432</p>
+  <h1 class="hero-title">Building Uber's <em>Demand<br>Forecasting System</em><br>From Scratch</h1>
+  <p class="hero-sub">A complete end-to-end forecasting pipeline — from raw historical data to an operations memo a manager can act on the morning of a sold-out concert.</p>
+  <div class="hero-meta">
+    <div class="hero-stat"><span class="value">104</span><span class="label">Weeks of Training Data</span></div>
+    <div class="hero-stat"><span class="value">23.9</span><span class="label">MAE — Trips off per Week</span></div>
+    <div class="hero-stat"><span class="value">439</span><span class="label">Concert Night Prediction</span></div>
+    <div class="hero-stat"><span class="value">+121</span><span class="label">Driver Supply Gap</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S1: BUSINESS PROBLEM -->
+<section class="section" id="problem">
+  <p class="section-number">Section 01 — The Business Problem</p>
+  <h2 class="section-title">Why Forecasting Is<br>Uber's Core Infrastructure</h2>
+  <div class="section-body">
+    <p>Uber has no inventory. It can't manufacture a spare driver the way a grocery store stocks an extra pallet of water before a hurricane. Every time someone opens the app, the company has seconds to answer one question: <strong>is there a driver nearby, and will that driver earn enough to stay online?</strong> Get that balance wrong in one direction and riders wait ten minutes, check Lyft, and leave. Get it wrong in the other and drivers circle empty neighborhoods, burn gas, and log off. Demand forecasting is the invisible engine that prevents both failures — it tells Uber where to pre-position supply, when to activate surge pricing to attract more drivers, and how many cars a city actually needs at 10pm on a Friday. Without it, Uber isn't a tech company. It's a taxi dispatcher hoping for the best.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S2: DATA AND MODEL -->
+<section class="section" id="model">
+  <p class="section-number">Section 02 — The Data and the Model</p>
+  <h2 class="section-title">Two Years of Bellingham<br>Friday Nights</h2>
+  <div class="section-body">
+    <p>I started with 104 weeks of simulated Friday night trip data for the area near WWU's campus in Bellingham — enough history to capture the full seasonal cycle twice. I engineered four features from the raw dates: a week number to capture the long-run growth trend, a summer flag that reflected WWU's enrollment drop, a New Year's Eve spike indicator, and a school-year flag that turned on the baseline student ridership. After training a linear regression model on this feature set, I backtested it against held-out weeks to measure how well the model tracked reality before trusting it with any real decision.</p>
+    <p>The chart below shows two years of actual Friday night trips. The NYE spike, the summer dips at each "Summer Start" dashed line, and the overall upward growth trend are all visible — these are the patterns the model had to learn.</p>
+
+    <!-- HISTORICAL DATA CHART — PROVIDED BY STUDENT -->
+    <div class="chart-area">
+      <img src="herec.png" alt="Friday Night Uber Trips Near WWU — 2 Years of History showing trend, seasonality, and NYE spike" />
+    </div>
+
+    <p style="margin: 1.5rem 0 0.5rem; font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; color: var(--cyan); text-transform: uppercase;">Backtest Results — Weeks 79–104 (Jul–Dec 2024)</p>
+    <div class="chart-area">
+      <img src="backtest.png" alt="Friday Night Demand — Backtest Results showing model predictions vs actuals with ±15% planning band. MAE: 23.9 trips" />
+    </div>
+
+    <p>The backtest covered 26 held-out weeks (July–December 2024) that the model never saw during training. The model's predictions — the orange dashed line — tracked the general level of demand well, staying inside the ±15% tolerance band for the large majority of weeks, with a final MAE of 23.9 trips (6.3% of average volume). Where it diverged most visibly was at the right edge of the chart: the actual line dipped sharply in late December while the model's prediction held steady, reflecting the year-end holiday drop that a linear trend line cannot anticipate. The ±15% planning band — shown as the shaded region — captured most of the week-to-week volatility, confirming it as a reasonable operational envelope for staffing decisions.</p>
+
+    <p class="chart-caption">The dashed line is what the model predicted. The solid line is what actually happened. <em>The gap between them is the model's error — and the honest measure of how much to trust it.</em></p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S3: CONCERT NIGHT -->
+<section class="section" id="prediction">
+  <p class="section-number">Section 03 — The Concert Night Prediction</p>
+  <h2 class="section-title">From Forecast to<br>Operations Memo</h2>
+  <div class="section-body">
+    <p>Here is the actual operations recommendation the model produced for the Death Cab for Cutie, Sleater-Kinney, and ODESZA homecoming concert at WWU.</p>
+
+    <div class="memo-block">
+      <pre>
+==============================================================
+STEP A — Concert Friday Feature Row
+==============================================================
+
+  Feature values and their business meaning:
+
+  week_num = 105
+    → Positions this Friday at the end of our 2-year growth trend.
+      The model will apply its learned per-week growth rate, giving
+      us the highest baseline in the dataset — appropriate, since
+      Uber's Bellingham market is at its most mature point.
+
+  is_summer = 0
+    → No summer multiplier applied. The concert is during the school
+      year, so we do not get the +20% summer nightlife premium.
+      This is correct — we want the model to reflect school-year
+      conditions, not inflate the estimate with a summer boost.
+
+  is_nye = 0
+    → No New Year's Eve spike. This is a concert, not NYE.
+      If we mistakenly set this to 1, the model would add its full
+      NYE premium (~80%) and massively overestimate demand.
+      We are deliberately NOT treating a concert like NYE — the
+      model has no concert feature, so we must be honest about that.
+
+  is_school_year = 1
+    → This is the most important flag for this prediction.
+      WWU is in session. Students are the primary late-night Uber
+      user base near campus. With school in session, Friday night
+      baseline demand is ~15% higher than a summer Friday.
+      For a sold-out show ending at 10pm, students without cars
+      are the core of the post-concert demand surge.
+
+  Feature row sent to model:
+ week_num  is_summer  is_nye  is_school_year
+      105          0       0               1
+
+==============================================================
+STEP B — Demand Prediction
+==============================================================
+
+  Predicted Friday night trips : 439
+  Lower bound  (−15%)          : 373
+  Upper bound  (+15%)          : 505
+
+  ➤  Predicted Friday night trips: 439 (range: 373 to 505)
+
+  Note: This is the model's estimate for a strong school-year Friday
+  at the end of the 2-year growth trend. It does NOT yet account for
+  the additional concentrated demand from the concert crowd at 10pm.
+  The upper bound should be treated as a minimum planning floor for
+  the post-show surge window, not a ceiling.
+
+==============================================================
+STEP C — Driver Recommendation
+==============================================================
+
+  Assumption: each driver completes ~3 trips/hour during
+  the post-concert rush (short campus-area rides, fast turnover).
+
+  Drivers needed — point estimate  : 146
+  Drivers needed — lower bound     : 124  (if demand comes in light)
+  Drivers needed — upper bound     : 168  (if demand runs hot)
+
+  ➤  Recommended staffing range: 124–168 drivers online
+     near campus at 9:45pm Friday.
+
+  Operational note: Position drivers within a 0.5-mile radius of the
+  venue before 10pm, not after. Post-concert demand is front-loaded —
+  the first 15 minutes after doors open account for the highest
+  request density. Late-arriving drivers miss the surge window entirely.
+
+==============================================================
+STEP D — Surge Pricing Decision
+==============================================================
+
+  Typical Bellingham Friday supply : 25 drivers online
+  Drivers needed (point estimate)  : 146
+  Supply gap                       : +121 drivers
+
+  ➤  SURGE PRICING: YES
+     Predicted demand requires 146 drivers but typical Friday
+     supply is only 25 — a gap of 121 drivers that standard
+     pricing cannot bridge without surge incentives to pull
+     additional drivers online before the 10pm rush.
+
+
+╔══════════════════════════════════════════════════════════════╗
+║         UBER BELLINGHAM — OPERATIONS FORECAST MEMO          ║
+╠══════════════════════════════════════════════════════════════╣
+║  TO      : Bellingham Area Operations Manager               ║
+║  FROM    : Demand Analytics                                  ║
+║  DATE    : Thursday morning (day before event)              ║
+║  SUBJECT : Concert Night Demand Forecast — WWU Friday       ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  EVENT                                                       ║
+║  Death Cab for Cutie / Sleater-Kinney / ODESZA homecoming   ║
+║  concert at WWU. Sold-out show. Doors close ~10:00 PM.      ║
+║                                                              ║
+║  PREDICTED DEMAND                                            ║
+║  Estimated Friday night trips : 439                          ║
+║  Planning range (±15%)        : 373 – 505 trips              ║
+║                                                              ║
+║  DRIVER STAFFING RECOMMENDATION                              ║
+║  Have 124–168 drivers online within 0.5 mi of campus        ║
+║  by 9:45 PM. Front-load supply before doors open —          ║
+║  peak request density hits in the first 15 minutes.         ║
+║                                                              ║
+║  SURGE PRICING                                               ║
+║  Recommendation : YES — activate surge pricing              ║
+║  Reason         : Predicted demand (146 drivers needed)      ║
+║                   exceeds typical Bellingham Friday supply   ║
+║                   (25 drivers) by 121 — a gap standard       ║
+║                   pricing alone cannot close.                ║
+║                                                              ║
+║  UPSIDE RISK — WHAT COULD PUSH DEMAND ABOVE THE UPPER BOUND ║
+║  The model was trained on ordinary Friday nights and has     ║
+║  no concert feature; if post-show demand is tightly         ║
+║  concentrated in a 20-minute window (not spread across the  ║
+║  full evening), real-time trip requests could spike 30–50%  ║
+║  above the upper bound during that window alone —           ║
+║  well outside the model's ±15% planning envelope.           ║
+║                                                              ║
+║  MODEL LIMITATION DISCLOSURE                                 ║
+║  This forecast reflects a strong school-year Friday at the  ║
+║  end of Uber's 2-year Bellingham growth curve. It does not  ║
+║  capture event-specific demand concentration. Treat the     ║
+║  upper bound as a floor for the 10–10:30 PM window,         ║
+║  not a ceiling. Real-time surge monitoring is essential.    ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ Step 3 complete — forecast and operations memo generated.
+   The model has done its job. The decision now belongs to the manager.
+      </pre>
+    </div>
+
+    <div class="callout">
+      <p><strong>Why a memo, not a dashboard?</strong> The model's job is to produce a number. The analyst's job is to translate that number into a decision a manager can act on. The memo above is the bridge — it states the prediction, the uncertainty range, the staffing recommendation, and — critically — the model's own limitation so the decision-maker isn't flying blind.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S4: STRESS TEST -->
+<section class="section" id="stress">
+  <p class="section-number">Section 04 — Stress-Testing the Forecast</p>
+  <h2 class="section-title">How Fragile Is<br>the Recommendation?</h2>
+  <div class="section-body">
+    <p>Before sending that memo, I stress-tested the key assumptions to understand how fragile the recommendation was.</p>
+
+    <div class="memo-block">
+      <pre>
+==============================================================
+STRESS TEST — Key Assumption Sensitivity Analysis
+==============================================================
+
+  Base case: week_num=105, is_summer=0, is_nye=0, is_school_year=1
+  Base prediction: 439 trips → 146 drivers → SURGE: YES (+121 gap)
+
+  Testing what happens if we get a feature wrong:
+
+  ┌─────────────────────────────┬──────────┬─────────┬──────────────┐
+  │ Scenario                    │ Trips    │ Drivers │ Surge?       │
+  ├─────────────────────────────┼──────────┼─────────┼──────────────┤
+  │ Base case (school in)       │  439     │  146    │ YES (+121)   │
+  │ is_school_year = 0 (wrong)  │  433     │  144    │ YES (+119)   │
+  │ is_summer = 1 (wrong)       │  445     │  148    │ YES (+123)   │
+  │ week_num = 52 (wrong week)  │  378     │  126    │ YES (+101)   │
+  │ is_nye = 1 (wrong — treat   │  497     │  166    │ YES (+141)   │
+  │   concert as NYE)           │          │         │              │
+  └─────────────────────────────┴──────────┴─────────┴──────────────┘
+
+  KEY FINDING: The surge recommendation (YES) is robust across all
+  tested feature perturbations. The supply gap of +121 is so large
+  that no single feature error flips the binary decision — typical
+  Friday supply of 25 drivers is simply too far below predicted
+  demand of 140+ drivers for any reasonable input variation to
+  eliminate the gap.
+
+  However, the STAFFING NUMBER is sensitive:
+    → Correct inputs:    124–168 drivers recommended
+    → If is_nye wrongly = 1: 141–190 drivers recommended (+17 on low end)
+    → Overstaffing by 17 drivers × $30/hr idle cost = ~$510/hr wasted
+
+  CONCLUSION: The surge decision is stable. The staffing range is not.
+  Confirm is_nye = 0 before forwarding staffing numbers to dispatch.
+  A concert is not NYE — do not let the model treat it like one.
+      </pre>
+    </div>
+
+    <!-- Replace placeholder above with memo-block once you have output:
+    <div class="memo-block">
+      <pre>
+[PASTE YOUR STRESS TEST OUTPUT HERE]
+      </pre>
+    </div>
+    -->
+
+    <p>In practice, stress-testing is what separates a responsible analyst from a number-printer. <strong>A model produces a point estimate; a stress test reveals which assumptions that estimate is sensitive to.</strong> If flipping a single feature — say, assuming school is out instead of in session — reverses the surge recommendation entirely, that's critical information for the operations manager. They now know to confirm the school calendar before acting, rather than discovering the error at 10:05pm when drivers are in the wrong part of the city.</p>
+
+    <div class="callout">
+      <p><span class="risk-badge">Risk</span> The most dangerous forecast is the one that looks precise but is actually hanging on a single unverified assumption. Stress-testing surfaces those dependencies before they become operational failures.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S5: ALGORITHM DECIDES -->
+<section class="section" id="algorithm">
+  <p class="section-number">Section 05 — When the Algorithm Decides</p>
+  <h2 class="section-title">The Prediction–Decision Gap:<br>No Human in the Loop</h2>
+  <div class="section-body">
+    <p>In the real Uber system, the forecast doesn't hand a memo to a manager — it feeds directly into a pricing algorithm that sets the surge multiplier automatically, city by city, minute by minute, with no human review between the model output and the fare a rider sees. When the model is right, this is elegant: supply and demand balance quietly in the background, drivers earn more during peaks, riders who need a ride get one. But when the model is wrong — when a 6.0 earthquake has just shut down three highway on-ramps and displaced thousands of people into areas the model has never seen — the algorithm cheerfully activates 4× surge on people who have nowhere else to go, because the input pattern looks like "high demand Friday" and the model has no concept of "disaster." The forecast was technically accurate on its own terms. The decision it triggered was not.</p>
+    <p>This is the prediction–decision gap: the model answers the question it was trained on, and the algorithm assumes that question is always the right one to be asking. There is no circuit breaker that says <em>this situation is outside my training distribution — pause and ask a human.</em> That gap is a design choice, and it is a choice with real consequences for real people.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S6: MODEL BREAKS -->
+<section class="section" id="shift">
+  <p class="section-number">Section 06 — When the Model Breaks</p>
+  <h2 class="section-title">Distribution Shift:<br>The Bellingham Scenario</h2>
+  <div class="section-body">
+    <p>Six weeks after the concert, something changed in Bellingham: WWU's enrollment dropped by 800 students as a budget-driven admissions cap took effect, two hundred new apartments opened in the Cordata neighborhood well north of campus, and Lyft quietly relaunched service in Whatcom County after an 18-month absence. The model had no idea. It kept predicting Friday nights based on a world that no longer existed — a growing, campus-centered, Uber-only market — and kept recommending driver counts and surge thresholds calibrated to that ghost. Drivers followed the model into zones where rides weren't coming. Riders in Cordata waited eleven minutes and switched to Lyft. Nobody told them the model was stale. Nobody told the model it was wrong. The degradation was silent, gradual, and expensive before anyone traced the earnings drop back to a distribution shift rather than a bad week.</p>
+    <p>This is the unsexy failure mode of production ML systems. <strong>The model doesn't crash. It just quietly becomes wrong — and keeps shipping confident predictions until someone notices the business metric moving in the wrong direction and starts asking why.</strong></p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ S7: REFLECTION -->
+<section class="section" id="reflection">
+  <p class="section-number">Section 07 — My Analysis</p>
+  <h2 class="section-title">What I Actually Learned<br>Building This</h2>
+  <div class="section-body">
+
+    <p>What surprised me most about this lab wasn't the model — it was the memo. I came in expecting the hard part to be the Python: the feature engineering, the regression, the backtest loop. Those were mechanical. The hard part was Step E: sitting down to write a recommendation that a real operations manager would actually act on, knowing that if I got a feature value wrong — if I set <code>is_school_year = 0</code> on a week when WWU was in session — the model would silently produce a plausible-looking wrong number with no error message. No stack trace. No warning. Just a confident forecast built on a bad assumption.</p>
+    <p>That's the part they don't teach you in statistics class: <strong>inference-time feature construction is where analyst judgment lives.</strong> The model is just a function. It will accept whatever inputs you give it and return a number. The judgment about whether those inputs are honest is entirely yours. And if you're wrong, the manager who acts on your memo doesn't know that — they just know drivers ended up in the wrong part of the city at 10pm.</p>
+    <p>The stress test reinforced this from a different angle. The surge decision turned out to be robust — a +121 driver gap is so large that no single feature flip reversed it. But the staffing number wasn't robust at all: treating the concert as NYE (is_nye = 1) pushed the low-end staffing estimate up by 17 drivers, which at even conservative idle costs adds up fast. The lesson isn't that you need to get every feature right to get the binary decision right. It's that the binary decision is the easy part. The number behind it — the one that determines how many drivers Uber actually calls in — is where the real accountability lives, and that number is sensitive to assumptions a non-technical manager will never think to question.</p>
+    <p>If I were the actual Uber analyst writing this memo for a real operations manager, I'd add one line that isn't in the current output: <em>"The surge recommendation is stable under any reasonable feature error. The staffing range is not — confirm is_nye = 0 before forwarding to dispatch."</em> That's the sentence that prevents the $500/hour overstaffing mistake. The model can't write it. That's your job.</p>
+
+    <hr class="rule">
+
+    <div class="callout">
+      <p><span class="risk-badge">Built in</span> MIS 432: AI in Business &nbsp;·&nbsp; Western Washington University &nbsp;·&nbsp; Spring 2025. Tools used: Python, pandas, scikit-learn, matplotlib, NumPy. All data is simulated for educational purposes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ FOOTER -->
+<footer>
+  <div class="footer-left">MIS 432 · AI in Business · <span>Western Washington University</span> · Spring 2025</div>
+  <div class="footer-right">Demand Forecasting Lab · Uber Bellingham Case Study</div>
+</footer>
+
+</body>
+</html>
